@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Album finder</string>
+
+    <string name="list_fragment_tag">list_fragment_tag</string>
+    <string name="information_fragment_tag">information_fragment_tag</string>
+
+    <string name="bundle_result_key">result_key</string>
+    <string name="hint_search">Enter album name</string>
+    <string name="search">Search</string>
+    <string name="empty_response">No results were found for your request</string>
+    <string name="network_problem">Something wrong with network\nPlease try again</string>
+
+    <string name="print_album_name">Please enter the album name</string>
+
+
+</resources>

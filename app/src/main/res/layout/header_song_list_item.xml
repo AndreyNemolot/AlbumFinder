@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+        <import type="android.view.View" />
+        <import type="java.text.SimpleDateFormat"/>
+
+        <variable
+            name="header"
+            type="com.example.itunesalbum.model.song.SongListHeader" />
+
+        <variable
+            name="viewModel"
+            type="com.example.itunesalbum.fragments.albumInformation.AlbumInformationViewModelImpl" />
+    </data>
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/header_song_list"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:foreground="?android:attr/selectableItemBackground">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <ImageView
+                android:id="@+id/imageView2"
+                android:layout_width="150dp"
+                android:layout_height="150dp"
+                android:layout_gravity="center"
+                android:layout_margin="10dp"
+                app:url="@{header.artworkUrl100}" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text='@{header.collectionName}'
+                android:layout_gravity="center"
+                android:layout_margin="10dp"
+                android:textAppearance="@style/text_black_18"
+                android:visibility='@{header.collectionName !="" ? View.VISIBLE : View.GONE}' />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text='@{header.artistName}'
+                android:textAppearance="@style/text_dark_blue_20"
+                android:visibility='@{header.artistName !="" ? View.VISIBLE : View.GONE}' />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="right"
+                android:layout_margin="5dp"
+                android:text='@{"Release " +  header.setDataFormat(header.releaseDate)}'
+                android:textAppearance="@style/text_dark_blue_13"
+                android:visibility='@{header.releaseDate!="" ? View.VISIBLE : View.GONE}' />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="right"
+                android:layout_margin="5dp"
+                android:text='@{header.copyright}'
+                android:textAppearance="@style/text_dark_blue_13"
+                android:visibility='@{header.copyright !="" ? View.VISIBLE : View.GONE}' />
+
+
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+
+
+</layout>
