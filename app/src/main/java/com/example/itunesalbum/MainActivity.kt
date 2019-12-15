@@ -15,6 +15,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        //Setup root fragment on activity
         if (savedInstanceState == null) {
             val router = CustomApplication.instance.getRouter()
             router.newRootScreen(Screens.Companion.ListFragment())

@@ -1,7 +1,6 @@
 package com.example.itunesalbum.fragments.albumList
 
 import android.os.Bundle
-import android.util.Log
 import android.view.*
 import android.widget.AdapterView.OnItemClickListener
 import android.widget.ArrayAdapter
@@ -37,7 +36,7 @@ class AlbumListFragment : Fragment(), CoroutineScope {
     override val coroutineContext: CoroutineContext = Dispatchers.IO
     private val itemAdapter = GenericItemAdapter()
     private val fastAdapter: GenericFastAdapter = FastAdapter.with(itemAdapter)
-    private val autocompleteDebounce = 400L
+    private val autocompleteDebounce = 500L
     private val autocompleteThreshold = 2
     private lateinit var viewModel: AlbumListViewModel
     private lateinit var binding: AlbumListFragmentBinding
@@ -48,62 +47,51 @@ class AlbumListFragment : Fragment(), CoroutineScope {
         setHasOptionsMenu(true)
     }
 
+    //Setup searchView with autocomplete in toolbar
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        menu.clear()
         inflater.inflate(R.menu.menu_search, menu)
         val searchView = SearchView(
             (context as MainActivity)
                 .supportActionBar?.themedContext ?: context
         )
-        val searchAutoComplete =
-            searchView.findViewById(androidx.appcompat.R.id.search_src_text) as SearchAutoComplete
-        searchAutoComplete.apply {
-            setDropDownBackgroundResource(R.color.md_white_1000)
-            threshold = autocompleteThreshold
-        }
-        searchAutoComplete.setAdapter(suggestionAdapter)
-        searchAutoComplete.onItemClickListener =
-            OnItemClickListener { adapterView, _, itemIndex, _ ->
-                val query =
-                    adapterView.getItemAtPosition(itemIndex).toString()
-                searchView.setQuery(query, true)
-            }
 
+        //setup searchView and restore user request after reload fragment
         menu.findItem(R.id.searchView).apply {
-            setShowAsAction(MenuItem.SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW or MenuItem.SHOW_AS_ACTION_IF_ROOM)
             actionView = searchView
+            if (viewModel.searchQuery.isNotEmpty()) {
+                searchView.requestFocus(View.FOCUS_DOWN)
+                searchView.requestFocusFromTouch()
+                expandActionView()
+                searchView.clearFocus()
+                searchView.setQuery(viewModel.searchQuery, false)
+            }
         }
 
-        val searchMenuItem = menu.findItem(R.id.searchView)
-        if (viewModel.searchQuery.isNotEmpty()) {
-            searchMenuItem.expandActionView()
-            searchView.setQuery(viewModel.searchQuery, false)
-            searchView.clearFocus()
-        }
-
-
-        val closeButton: ImageView = searchView.findViewById(R.id.search_close_btn) as ImageView
-        closeButton.setOnClickListener {
+        //Save empty query after click clear button
+        val clearQueryButton = searchView.findViewById(R.id.search_close_btn) as ImageView
+        clearQueryButton.setOnClickListener {
             viewModel.searchQuery = ""
-            searchView.onActionViewCollapsed()
-            searchMenuItem.collapseActionView()
-
+            searchView.setQuery(viewModel.searchQuery, false)
         }
+
+
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            //Search album if user click search button
             override fun onQueryTextSubmit(query: String): Boolean {
-                searchByQuery(query)
+                searchAlbumByQuery(query)
                 return false
             }
 
+            //Load album list for autocomplete use debouncing
             private var searchFor = ""
+
             override fun onQueryTextChange(newText: String): Boolean {
                 val searchText = newText.trim()
                 if (searchText == searchFor || searchText == "" ||
                     searchText.toCharArray().size < autocompleteThreshold
-                ) return false
-
+                )
+                    return false
                 searchFor = searchText
-
                 launch {
                     delay(autocompleteDebounce)
                     if (searchText != searchFor)
@@ -113,6 +101,31 @@ class AlbumListFragment : Fragment(), CoroutineScope {
                 return false
             }
         })
+
+        //Setup autocomplete search
+        val autocompleteSearch =
+            searchView.findViewById(androidx.appcompat.R.id.search_src_text) as SearchAutoComplete
+        autocompleteSearch.apply {
+            setDropDownBackgroundResource(R.color.md_white_1000)
+            threshold = autocompleteThreshold
+        }
+        autocompleteSearch.setAdapter(suggestionAdapter)
+        autocompleteSearch.onItemClickListener =
+            OnItemClickListener { adapterView, _, itemIndex, _ ->
+                val query =
+                    adapterView.getItemAtPosition(itemIndex).toString()
+                searchView.setQuery(query, true)
+            }
+    }
+
+    fun searchAlbumByQuery(query: String) {
+        viewModel.loadAlbumsByName(query)
+    }
+
+    //Save input query and search current list album list for autocomplete
+    private fun searchByAutocomplete(query: String) {
+        viewModel.searchQuery = query
+        viewModel.loadAlbumsForAutocompleteByName(query)
     }
 
     override fun onCreateView(
@@ -131,7 +144,6 @@ class AlbumListFragment : Fragment(), CoroutineScope {
         setArrayAdapter()
         subscribeOnAlbumsList()
         subscribeOnAutocompleteAlbumsList()
-
     }
 
     private fun setViewModel() {
@@ -140,8 +152,29 @@ class AlbumListFragment : Fragment(), CoroutineScope {
 
     private fun setBinding() {
         binding.viewModel = viewModel as AlbumListViewModelImpl
+        binding.fragment=this
     }
 
+    private fun setUpRecyclerViewAdapter() {
+        binding.recyclerView.adapter = fastAdapter
+        fastAdapter.onClickListener = { _, _, item, _ ->
+            openInformationFragment(item as AlbumResult)
+            false
+        }
+    }
+
+    //Open fragment with information about album
+    private fun openInformationFragment(item: AlbumResult) {
+        val router = CustomApplication.instance.getRouter()
+        router.navigateTo(
+            Screens.Companion.InformationFragment(
+                getString(R.string.bundle_result_key),
+                item
+            )
+        )
+    }
+
+    //Setup adapter for autocomplete
     private fun setArrayAdapter() {
         suggestionAdapter = ArrayAdapter(
             context!!,
@@ -155,51 +188,23 @@ class AlbumListFragment : Fragment(), CoroutineScope {
         })
     }
 
+    //Adding list searched albums
+    private fun addDataToAdapter(albumList: List<AlbumResult>) {
+        itemAdapter.set(albumList)
+    }
+
     private fun subscribeOnAutocompleteAlbumsList() {
         viewModel.subscribeOnAutocompleteAlbumsList().observe(this, Observer {
             setAutocompleteData(it)
         })
     }
 
-
+    //Setup list to autocomplete view by user input
     private fun setAutocompleteData(albumList: List<AlbumResult>) {
         suggestionAdapter.clear()
         suggestionAdapter.addAll(albumList)
         suggestionAdapter.notifyDataSetChanged()
-        Log.e("autoTag", "SETDATA: ${albumList.size}")
+        suggestionAdapter.filter.filter(null)
     }
-
-    private fun setUpRecyclerViewAdapter() {
-        binding.recyclerView.adapter = fastAdapter
-        fastAdapter.onClickListener = { _, _, item, _ ->
-            openInformationFragment(item as AlbumResult)
-            false
-        }
-    }
-
-    private fun openInformationFragment(item: AlbumResult) {
-        val router = CustomApplication.instance.getRouter()
-        router.navigateTo(
-            Screens.Companion.InformationFragment(
-                getString(R.string.bundle_result_key),
-                item
-            )
-        )
-    }
-
-    private fun addDataToAdapter(albumList: List<AlbumResult>) {
-        itemAdapter.set(albumList)
-    }
-
-    private fun searchByQuery(query: String) {
-        viewModel.loadAlbumsByName(query)
-    }
-
-    private fun searchByAutocomplete(query: String) {
-        viewModel.searchQuery = query
-        Log.e("autoTag", "AUTOCOMPLETE: $query")
-        viewModel.loadAlbumsForAutocompleteByName(query)
-    }
-
 
 }

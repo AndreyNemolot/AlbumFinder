@@ -6,6 +6,8 @@ import com.example.itunesalbum.databinding.SongListItemBinding
 import com.mikepenz.fastadapter.FastAdapter
 import com.mikepenz.fastadapter.items.AbstractItem
 
+//Model for song item result which contains view holder for FastAdapter
+
 data class SongResult(
     val artistId: Int=0,
     val artistName: String= "",
@@ -21,8 +23,9 @@ data class SongResult(
 
     override val layoutRes: Int
         get() = R.layout.song_list_item
+
     override val type: Int
-        get() = R.id.song_list_item
+        get() = trackNumber
 
     override fun getViewHolder(v: View): ViewHolder {
         return ViewHolder(v)

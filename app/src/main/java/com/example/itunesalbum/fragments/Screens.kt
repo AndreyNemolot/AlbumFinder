@@ -14,7 +14,7 @@ class Screens {
             }
         }
 
-        class InformationFragment(private val bundleKey: String, val result: AlbumResult) :
+        class InformationFragment(private val bundleKey: String, private val result: AlbumResult) :
             SupportAppScreen() {
             override fun getFragment(): Fragment {
                 return AlbumInformationFragment.newInstance(bundleKey, result)

@@ -4,6 +4,7 @@ import androidx.databinding.ObservableBoolean
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.example.itunesalbum.model.AlphabetComparatorAscending
 import com.example.itunesalbum.model.album.AlbumResponse
 import com.example.itunesalbum.model.album.AlbumResult
 import com.example.itunesalbum.network.Controller
@@ -12,9 +13,8 @@ import com.example.itunesalbum.repository.MusicRepositoryImpl
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.io.Serializable
+import java.io.IOException
 import java.util.*
-import kotlin.collections.ArrayList
 import kotlin.coroutines.CoroutineContext
 
 
@@ -23,14 +23,14 @@ class AlbumListViewModelImpl : ViewModel(), AlbumListViewModel, CoroutineScope {
     override val coroutineContext: CoroutineContext = Dispatchers.IO
     override var searchQuery = ""
     private val repository: MusicRepository
-    private val liveDataAlbums = MutableLiveData<List<AlbumResult>>()
-    private val liveDataAlbumsAutocomplete = MutableLiveData<List<AlbumResult>>()
-    private var albumList = ArrayList<AlbumResult>()
-    private var autocompleteList = ArrayList<AlbumResult>()
+    private val liveDataAlbum = MutableLiveData<List<AlbumResult>>()
+    private var albumList: MutableList<AlbumResult> = mutableListOf()
+    private val liveDataAlbumAutocomplete = MutableLiveData<List<AlbumResult>>()
+    private var autocompleteList : MutableList<AlbumResult> = mutableListOf()
     val isResponseEmpty = ObservableBoolean(false)
     val isNetworkProblem = ObservableBoolean(false)
     val isLoading = ObservableBoolean(false)
-    val doShowHint = ObservableBoolean(false)
+    val doShowSearchHint = ObservableBoolean(true)
 
     init {
         repository = MusicRepositoryImpl(Controller())
@@ -38,65 +38,76 @@ class AlbumListViewModelImpl : ViewModel(), AlbumListViewModel, CoroutineScope {
 
     override fun loadAlbumsByName(query: String, numberOfItems: Int) {
         isLoading.set(true)
-        removeMessages()
+        clearMessages()
         launch {
-            val albumResponse = repository.getAlbums(query, numberOfItems)
-            handleResponse(albumResponse)
-            isLoading.set(false)
+            try {
+                val albumResponse = repository.getAlbums(query, numberOfItems)
+                handleSuccessResponse(albumResponse)
+            } catch (ioException: IOException) {
+                ioException.printStackTrace()
+                handleErrorResponse()
+            } finally {
+                isLoading.set(false)
+                liveDataAlbum.postValue(albumList)
+            }
+
         }
     }
 
-    private fun handleResponse(albumResponse: AlbumResponse) {
-        albumList = albumResponse.results
-        val (resultCount, exception) = albumResponse
-        when {
-            (resultCount == 0 && exception == "") -> {
-                albumList=ArrayList()
-                isNetworkProblem.set(false)
-                isResponseEmpty.set(true)
-            }
-            (resultCount == 0 && exception != "") -> {
-                albumList=ArrayList()
-                isNetworkProblem.set(true)
-                isResponseEmpty.set(false)
-            }
-            else -> {
-                removeMessages()
-                Collections.sort(albumList, AlphabetComparatorAscending())
-            }
+    private fun handleSuccessResponse(albumResponse: AlbumResponse) {
+        if (albumResponse.resultCount == 0) {
+            doShowSearchHint.set(false)
+            isNetworkProblem.set(false)
+            isResponseEmpty.set(true)
+        } else {
+            albumList = albumResponse.results
+            clearMessages()
+            Collections.sort(albumList, AlphabetComparatorAscending())
         }
-        liveDataAlbums.postValue(albumList)
-
-
     }
 
-    private fun removeMessages(){
+    private fun handleErrorResponse() {
+        doShowSearchHint.set(false)
+        isNetworkProblem.set(true)
+        isResponseEmpty.set(false)
+    }
+
+    //Clear notification messages
+    private fun clearMessages() {
+        doShowSearchHint.set(false)
         isNetworkProblem.set(false)
         isResponseEmpty.set(false)
     }
 
     override fun loadAlbumsForAutocompleteByName(query: String, numberOfItems: Int) {
         launch {
-            albumList = repository.getAlbums(query, numberOfItems).results
-            Collections.sort(albumList, AlphabetComparatorAscending())
-            liveDataAlbumsAutocomplete.postValue(albumList)
-            autocompleteList.addAll(albumList)
+            try {
+                val albumResponse = repository.getAlbums(query, numberOfItems)
+                handleAutoSuccessResponse(albumResponse)
+            } catch (ioException: IOException) {
+                ioException.printStackTrace()
+            } finally {
+                liveDataAlbumAutocomplete.postValue(autocompleteList)
+            }
+        }
+    }
+
+    private fun handleAutoSuccessResponse(albumResponse: AlbumResponse) {
+        if (albumResponse.resultCount != 0) {
+            autocompleteList = albumResponse.results
+            Collections.sort(autocompleteList, AlphabetComparatorAscending())
+            liveDataAlbumAutocomplete.postValue(autocompleteList)
         }
     }
 
     override fun subscribeOnAlbumsList(): LiveData<List<AlbumResult>> {
-        return liveDataAlbums
+        return liveDataAlbum
     }
 
     override fun subscribeOnAutocompleteAlbumsList(): LiveData<List<AlbumResult>> {
-        return liveDataAlbumsAutocomplete
+        return liveDataAlbumAutocomplete
     }
 
-    private inner class AlphabetComparatorAscending : Comparator<AlbumResult>, Serializable {
-        override fun compare(lhs: AlbumResult, rhs: AlbumResult): Int {
-            return lhs.collectionName.compareTo(rhs.collectionName)
-        }
-    }
 }
 
 

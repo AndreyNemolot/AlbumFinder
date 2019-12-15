@@ -11,7 +11,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 
 class Controller {
-    private val BASE_URL_ACCOUNT = "https://itunes.apple.com/"
+    private val baseUrl = "https://itunes.apple.com/"
     private var client: Retrofit
     private val albumEntity="album"
     private val songEntity="song"
@@ -24,7 +24,7 @@ class Controller {
             .create()
 
         client = Retrofit.Builder()
-            .baseUrl(BASE_URL_ACCOUNT)
+            .baseUrl(baseUrl)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
             .build()

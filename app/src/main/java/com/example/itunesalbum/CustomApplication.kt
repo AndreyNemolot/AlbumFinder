@@ -8,6 +8,7 @@ import ru.terrakok.cicerone.Router
 
 class CustomApplication : Application() {
 
+    //Library for fragments routing
     private lateinit var cicerone: Cicerone<Router>
 
     companion object {

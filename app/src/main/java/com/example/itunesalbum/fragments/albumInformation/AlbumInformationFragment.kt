@@ -17,7 +17,6 @@ import com.example.itunesalbum.model.song.SongListHeader
 import com.example.itunesalbum.model.song.SongResult
 import com.mikepenz.fastadapter.FastAdapter
 import com.mikepenz.fastadapter.GenericFastAdapter
-import com.mikepenz.fastadapter.adapters.GenericItemAdapter
 import com.mikepenz.fastadapter.adapters.ItemAdapter
 import com.mikepenz.fastadapter.listeners.ClickEventHook
 
@@ -35,7 +34,7 @@ class AlbumInformationFragment : Fragment() {
     }
 
     private val headerAdapter = ItemAdapter<SongListHeader>()
-    private val itemAdapter = GenericItemAdapter()
+    private val itemAdapter = ItemAdapter<SongResult>()
     private val fastAdapter: GenericFastAdapter =
         FastAdapter.with(listOf(headerAdapter, itemAdapter))
     private lateinit var viewModel: AlbumInformationViewModel
@@ -51,16 +50,16 @@ class AlbumInformationFragment : Fragment() {
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-
-        setViewModel()
+        val album = getResult()
+        setViewModel(album)
         setBinding()
         subscribeOnSongList()
         setEventHookForHeaderItem()
         setEventHookForSongItem()
     }
 
-    private fun setViewModel() {
-        val album = getResult()
+    //Create viewModel with chosen album
+    private fun setViewModel(album: AlbumResult) {
         viewModel = ViewModelProviders.of(
             this, AlbumInfoModelFactory(album)
         ).get(AlbumInformationViewModelImpl::class.java)
@@ -71,13 +70,15 @@ class AlbumInformationFragment : Fragment() {
         binding.recyclerView.adapter = fastAdapter
     }
 
+    //When songs information has downloaded. Setup album information  and songs list to recyclerView
     private fun subscribeOnSongList() {
-        viewModel.subscribeOnSongsList().observe(this, Observer {
+        viewModel.subscribeOnSongList().observe(this, Observer {
             headerAdapter.set(listOf(viewModel.headerItem))
             itemAdapter.set(it)
         })
     }
 
+    //Click listener for album information item in recyclerView
     private fun setEventHookForHeaderItem() {
         fastAdapter.addEventHook(object : ClickEventHook<SongListHeader>() {
             override fun onBind(viewHolder: RecyclerView.ViewHolder): View? {
@@ -100,6 +101,7 @@ class AlbumInformationFragment : Fragment() {
         })
     }
 
+    //Click listener for songs item in recyclerView
     private fun setEventHookForSongItem() {
         fastAdapter.addEventHook(object : ClickEventHook<SongResult>() {
             override fun onBind(viewHolder: RecyclerView.ViewHolder): View? {
@@ -122,16 +124,10 @@ class AlbumInformationFragment : Fragment() {
         })
     }
 
+    //Getting chosen album from bundle
     private fun getResult(): AlbumResult {
-        val bundle = arguments
-        if (bundle != null) {
-            val rssLink =
-                bundle.getParcelable<AlbumResult>(getString(R.string.bundle_result_key))
-            if (rssLink != null) {
-                return rssLink
-            }
-        }
-        return AlbumResult()
+        val bundle = arguments ?: return AlbumResult()
+        return bundle.getParcelable(getString(R.string.bundle_result_key)) ?: AlbumResult()
     }
 
 }
